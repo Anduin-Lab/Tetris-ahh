@@ -12,13 +12,13 @@ SHADOW_COLOR = "#3A3A5A"
 
 NEON_COLORS = [
     None,
-    "#00FFFF",  # Cyan I
-    "#0000FF",  # Blue J
-    "#FF9900",  # Orange L
-    "#FFFF00",  # Yellow O
-    "#00FF00",  # Green S
-    "#9900FF",  # Purple T
-    "#FF0055"   # Red Z
+    "#00FFFF",
+    "#0000FF",
+    "#FF9900",
+    "#FFFF00",
+    "#00FF00",
+    "#9900FF",
+    "#FF0055"
 ]
 
 SHAPES = [
@@ -96,11 +96,10 @@ class TetrisGame:
         if self.game_over: return
         self.current_piece.rotation += 1
         if self.check_collision(self.current_piece):
-            self.current_piece.rotation -= 1  # Revert if it hits something
+            self.current_piece.rotation -= 1
         self.draw()
 
     def get_ghost_y(self):
-        # Calculate exactly where the block will land for the shadow preview
         dy = 0
         while not self.check_collision(self.current_piece, 0, dy + 1):
             dy += 1
@@ -155,22 +154,18 @@ class TetrisGame:
             ghost_dy = self.get_ghost_y()
             for bx, by in self.current_piece.get_blocks(0, ghost_dy):
                 if by >= 0:
-                    # Tkinter doesn't do true alpha transparency natively on canvas items, 
-                    # so we simulate transparency using a dashed, hollow neon outline.
                     self.canvas.create_rectangle(bx*BLOCK_SIZE+2, by*BLOCK_SIZE+2, (bx+1)*BLOCK_SIZE-2, (by+1)*BLOCK_SIZE-2, outline=SHADOW_COLOR, width=2, dash=(4, 2))
 
             for bx, by in self.current_piece.get_blocks():
                 if by >= 0:
                     color = NEON_COLORS[self.current_piece.color]
-                    # White border inside the block accentuates the "glow"
                     self.canvas.create_rectangle(bx*BLOCK_SIZE, by*BLOCK_SIZE, (bx+1)*BLOCK_SIZE, (by+1)*BLOCK_SIZE, fill=color, outline="#FFFFFF", width=1)
 
     def game_loop(self):
         if not self.game_over:
-            # Try to push down. If it hits something, lock it.
             if not self.move(0, 1):
                 self.lock_piece()
-            self.root.after(500, self.game_loop) # Loop drops every 500ms
+            self.root.after(500, self.game_loop)
 
 if __name__ == "__main__":
     root = tk.Tk()
