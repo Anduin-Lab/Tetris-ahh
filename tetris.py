@@ -1,7 +1,6 @@
 import tkinter as tk
 import random
 
-
 ROW, COL = 20, 10
 BLOCK_SIZE = 30
 WIDTH, HEIGHT = COL * BLOCK_SIZE, ROW * BLOCK_SIZE
@@ -12,13 +11,13 @@ SHADOW_COLOR = "#3A3A5A"
 
 NEON_COLORS = [
     None,
-    "#00FFFF",
-    "#0000FF",
-    "#FF9900",
-    "#FFFF00",
-    "#00FF00",
-    "#9900FF",
-    "#FF0055"
+    "#00FFFF",  
+    "#0000FF",  
+    "#FF9900",  
+    "#FFFF00",  
+    "#00FF00",  
+    "#9900FF",  
+    "#FF0055"   
 ]
 
 SHAPES = [
@@ -39,8 +38,9 @@ class Piece:
         self.x = 3
         self.y = 0
 
-    def get_blocks(self, x_offset=0, y_offset=0):
-        shape = SHAPES[self.shape_idx][self.rotation % len(SHAPES[self.shape_idx])]
+    def get_blocks(self, x_offset=0, y_offset=0, rotation_offset=0):
+        rot = (self.rotation + rotation_offset) % len(SHAPES[self.shape_idx])
+        shape = SHAPES[self.shape_idx][rot]
         return [(self.x + b % 4 + x_offset, self.y + b // 4 + y_offset) for b in shape]
 
 class TetrisGame:
@@ -52,21 +52,35 @@ class TetrisGame:
         self.grid = [[0 for _ in range(COL)] for _ in range(ROW)]
         self.score = 0
         self.game_over = False
+        
         self.current_piece = Piece()
+        self.next_piece = Piece()
 
         self.setup_ui()
         self.bind_controls()
         self.game_loop()
 
     def setup_ui(self):
-        self.title_label = tk.Label(self.root, text="NEON TETRIS", font=("Courier", 20, "bold"), fg="#00FFFF", bg=BG_COLOR)
-        self.title_label.pack(pady=5)
+        main_container = tk.Frame(self.root, bg=BG_COLOR)
+        main_container.pack(padx=20, pady=20)
 
-        self.score_label = tk.Label(self.root, text="SCORE: 0", font=("Courier", 16, "bold"), fg="#FF0055", bg=BG_COLOR)
-        self.score_label.pack(pady=5)
+        self.canvas = tk.Canvas(main_container, width=WIDTH, height=HEIGHT, bg=BG_COLOR, highlightbackground=GRID_COLOR, highlightthickness=2)
+        self.canvas.grid(row=0, column=0, padx=(0, 20))
 
-        self.canvas = tk.Canvas(self.root, width=WIDTH, height=HEIGHT, bg=BG_COLOR, highlightbackground=GRID_COLOR, highlightthickness=2)
-        self.canvas.pack(padx=20, pady=10)
+        sidebar = tk.Frame(main_container, bg=BG_COLOR)
+        sidebar.grid(row=0, column=1, sticky="n")
+
+        title_label = tk.Label(sidebar, text="NEON\nTETRIS", font=("Courier", 24, "bold"), fg="#00FFFF", bg=BG_COLOR, justify="center")
+        title_label.pack(pady=(0, 20))
+
+        self.score_label = tk.Label(sidebar, text="SCORE\n0", font=("Courier", 18, "bold"), fg="#FF0055", bg=BG_COLOR, justify="center")
+        self.score_label.pack(pady=(0, 20))
+
+        next_title = tk.Label(sidebar, text="NEXT", font=("Courier", 14, "bold"), fg="#3A3A5A", bg=BG_COLOR)
+        next_title.pack(pady=(0, 5))
+
+        self.next_canvas = tk.Canvas(sidebar, width=120, height=120, bg=BG_COLOR, highlightbackground=GRID_COLOR, highlightthickness=2)
+        self.next_canvas.pack()
 
     def bind_controls(self):
         self.root.bind("<Left>", lambda e: self.move(-1, 0))
@@ -75,8 +89,8 @@ class TetrisGame:
         self.root.bind("<Up>", lambda e: self.rotate())
         self.root.bind("<space>", lambda e: self.hard_drop())
 
-    def check_collision(self, piece, x_off=0, y_off=0):
-        for bx, by in piece.get_blocks(x_off, y_off):
+    def check_collision(self, piece, x_off=0, y_off=0, rot_off=0):
+        for bx, by in piece.get_blocks(x_off, y_off, rot_off):
             if bx < 0 or bx >= COL or by >= ROW:
                 return True
             if by >= 0 and self.grid[by][bx]:
@@ -94,9 +108,8 @@ class TetrisGame:
 
     def rotate(self):
         if self.game_over: return
-        self.current_piece.rotation += 1
-        if self.check_collision(self.current_piece):
-            self.current_piece.rotation -= 1
+        if not self.check_collision(self.current_piece, rot_off=1):
+            self.current_piece.rotation += 1
         self.draw()
 
     def get_ghost_y(self):
@@ -119,9 +132,11 @@ class TetrisGame:
         cleared = self.clear_lines()
         if cleared > 0:
             self.score += [0, 100, 300, 500, 800][cleared] 
-            self.score_label.config(text=f"SCORE: {self.score}")
+            self.score_label.config(text=f"SCORE\n{self.score}")
 
-        self.current_piece = Piece()
+        self.current_piece = self.next_piece
+        self.next_piece = Piece()
+
         if self.check_collision(self.current_piece):
             self.game_over = True
             self.canvas.create_text(WIDTH//2, HEIGHT//2, text="GAME OVER", fill="#FF0055", font=("Courier", 24, "bold"))
@@ -138,6 +153,7 @@ class TetrisGame:
 
     def draw(self):
         self.canvas.delete("all")
+        self.next_canvas.delete("all")
 
         for r in range(ROW):
             self.canvas.create_line(0, r*BLOCK_SIZE, WIDTH, r*BLOCK_SIZE, fill=GRID_COLOR)
@@ -160,6 +176,21 @@ class TetrisGame:
                 if by >= 0:
                     color = NEON_COLORS[self.current_piece.color]
                     self.canvas.create_rectangle(bx*BLOCK_SIZE, by*BLOCK_SIZE, (bx+1)*BLOCK_SIZE, (by+1)*BLOCK_SIZE, fill=color, outline="#FFFFFF", width=1)
+
+            next_shape = SHAPES[self.next_piece.shape_idx][0]
+            color = NEON_COLORS[self.next_piece.color]
+            
+            x_b_size = 25
+            for b in next_shape:
+                bx, by = b % 4, b // 4
+                x_offset = (120 - (4 * x_b_size)) // 2 if self.next_piece.shape_idx == 0 else (120 - (3 * x_b_size)) // 2
+                y_offset = (120 - (2 * x_b_size)) // 2 if self.next_piece.shape_idx == 0 else (120 - (3 * x_b_size)) // 2
+                
+                self.next_canvas.create_rectangle(
+                    bx * x_b_size + x_offset, by * x_b_size + y_offset,
+                    (bx + 1) * x_b_size + x_offset, (by + 1) * x_b_size + y_offset,
+                    fill=color, outline="#FFFFFF", width=1
+                )
 
     def game_loop(self):
         if not self.game_over:
